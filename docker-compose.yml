@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: sentiment-postgres
+    environment:
+      POSTGRES_USER: sentiment
+      POSTGRES_PASSWORD: sentiment_password
+      POSTGRES_DB: sentiment_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentiment -d sentiment_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: sentiment-api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://sentiment:sentiment_password@db:5432/sentiment_db
+      MODEL_VERSION: v1
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
